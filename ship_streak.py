@@ -6,7 +6,7 @@ import subprocess
 import sys
 import threading
 import webbrowser
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -271,6 +271,61 @@ def fetch_year(token, username):
     return d["data"]["user"]["contributionsCollection"]["contributionCalendar"]
 
 
+def fetch_loc_today(token, username):
+    """Count lines added+deleted today (IST) from GitHub push events."""
+    IST = timezone(timedelta(hours=5, minutes=30))
+    today_ist = datetime.now(IST).strftime("%Y-%m-%d")
+    headers = {}
+    if token:
+        headers["Authorization"] = f"bearer {token}"
+    loc = 0
+    page = 1
+    while page <= 3:
+        r = requests.get(
+            f"https://api.github.com/users/{username}/events?per_page=100&page={page}",
+            headers=headers, timeout=15)
+        r.raise_for_status()
+        events = r.json()
+        if not events:
+            break
+        found_today = False
+        for ev in events:
+            ev_date = datetime.strptime(ev["created_at"], "%Y-%m-%dT%H:%M:%SZ") \
+                .replace(tzinfo=timezone.utc).astimezone(IST).strftime("%Y-%m-%d")
+            if ev_date < today_ist:
+                return loc
+            if ev_date == today_ist and ev["type"] == "PushEvent":
+                found_today = True
+                repo = ev["repo"]["name"]
+                payload = ev["payload"]
+                # Use compare API (before...head) when commits array is missing
+                if payload.get("commits"):
+                    for c in payload["commits"]:
+                        try:
+                            cr = requests.get(
+                                f"https://api.github.com/repos/{repo}/commits/{c['sha']}",
+                                headers=headers, timeout=10)
+                            if cr.status_code == 200:
+                                stats = cr.json().get("stats", {})
+                                loc += stats.get("additions", 0) + stats.get("deletions", 0)
+                        except Exception:
+                            pass
+                elif payload.get("before") and payload.get("head"):
+                    try:
+                        cr = requests.get(
+                            f"https://api.github.com/repos/{repo}/compare/{payload['before']}...{payload['head']}",
+                            headers=headers, timeout=10)
+                        if cr.status_code == 200:
+                            for f in cr.json().get("files", []):
+                                loc += f.get("additions", 0) + f.get("deletions", 0)
+                    except Exception:
+                        pass
+        if not found_today:
+            break
+        page += 1
+    return loc
+
+
 def calc_streak(weeks):
     by_date = {}
     for w in weeks:
@@ -323,6 +378,7 @@ class GraphView(NSView):
             self.today_count = 0
             self.streak = 0
             self.longest = 0
+            self.loc_today = 0
             self.theme_key = "github_classic"
         return self
 
@@ -394,7 +450,11 @@ class GraphView(NSView):
                 lv = lvl(day["contributionCount"])
                 self._draw_cell(theme, x, y, lv)
 
+        # LOC today (bottom-left)
         ly = H - 22
+        self._text(f"{self.loc_today:,} LOC today", LPAD, ly + 1, 9, True)
+
+        # Legend (bottom-right)
         lx = W - 175
         self._text("Less", lx, ly + 1, 9)
         lx += 30
@@ -729,6 +789,10 @@ class AppController(NSObject):
             v.today_count = tc
             v.streak = st
             v.longest = lg
+            try:
+                v.loc_today = fetch_loc_today(token, self.username)
+            except Exception:
+                pass  # keep previous value on failure
             v.performSelectorOnMainThread_withObject_waitUntilDone_(
                 "triggerRedraw:", None, False)
             self.performSelectorOnMainThread_withObject_waitUntilDone_(
