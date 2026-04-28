@@ -18,7 +18,7 @@ from AppKit import (
     NSAttributedString, NSScreen, NSWorkspace, NSMenu, NSMenuItem,
     NSStatusBar, NSVariableStatusItemLength,
     NSTextField, NSSecureTextField, NSButton,
-    NSBezelStyleRounded,
+    NSBezelStyleRounded, NSGraphicsContext,
 )
 from Foundation import NSObject, NSTimer, NSPoint, NSSize, NSRect
 
@@ -50,11 +50,132 @@ CELL = 11
 GAP = 2
 STEP = CELL + GAP
 LPAD = 45
-TPAD = 55
+TPAD = 63
 RPAD = 20
 BPAD = 35
 W = LPAD + 53 * STEP - GAP + RPAD
 H = TPAD + 7 * STEP - GAP + BPAD
+
+
+# ---- Theme Definitions ----
+
+def _fire_icon(streak, today_count):
+    return "\U0001f525" if today_count > 0 else "\u26a0\ufe0f"
+
+def _barbie_icon(streak, today_count):
+    if today_count == 0:
+        return "\u26a0\ufe0f"
+    if streak >= 365:
+        return "\U0001f451"   # crown
+    if streak >= 180:
+        return "\U0001f48e"   # gem
+    if streak >= 169:
+        return "\U0001f9a9"   # flamingo
+    if streak >= 45:
+        return "\U0001f485"   # nail polish
+    if streak >= 21:
+        return "\U0001f496"   # sparkling heart
+    if streak >= 11:
+        return "\u2b50"       # star
+    return "\u2728"           # sparkles
+
+def _water_icon(streak, today_count):
+    return "\U0001f4a7" if today_count > 0 else "\u26a0\ufe0f"
+
+def _minesweeper_icon(streak, today_count):
+    if today_count == 0:
+        return "\U0001f4a3"   # bomb - you missed!
+    if streak >= 100:
+        return "\U0001f60e"   # sunglasses - legend
+    if streak >= 30:
+        return "\U0001f3c6"   # trophy - winning
+    return "\U0001f642"       # smiley - the classic minesweeper face
+
+THEME_ORDER = ["github_classic", "midnight_inferno", "malibu_dream", "ocean_drift", "minesweeper"]
+
+THEMES = {
+    "github_classic": {
+        "name": "GitHub Classic",
+        "bg": BG,
+        "border": BORDER,
+        "empty": EMPTY,
+        "levels": LEVELS,
+        "text": TXT,
+        "cell_style": "solid",
+        "streak_icon": _fire_icon,
+    },
+    "midnight_inferno": {
+        "name": "Midnight Inferno",
+        "bg": BG,
+        "border": BORDER,
+        "empty": EMPTY,
+        "levels": [
+            (0.80, 0.65, 0.10, 1.0),   # gold
+            (0.90, 0.50, 0.05, 1.0),   # orange
+            (0.85, 0.30, 0.05, 1.0),   # orange-red
+            (0.70, 0.10, 0.15, 1.0),   # crimson
+        ],
+        "text": TXT,
+        "cell_style": "emoji",
+        "emoji_levels": ["\U0001f56f\ufe0f", "\U0001f525", "\U0001f4a5", "\u2604\ufe0f"],
+        "streak_icon": _fire_icon,
+    },
+    "malibu_dream": {
+        "name": "Malibu Dream",
+        "bg": (0.10, 0.05, 0.10, 0.95),
+        "border": (0.25, 0.10, 0.20, 1.0),
+        "empty": (0.15, 0.08, 0.13, 1.0),
+        "levels": [
+            (0.85, 0.60, 0.70, 1.0),   # light pink
+            (1.00, 0.41, 0.71, 1.0),   # hot pink
+            (1.00, 0.08, 0.58, 1.0),   # deep pink
+            (0.78, 0.08, 0.52, 1.0),   # medium violet red
+        ],
+        "text": (0.95, 0.75, 0.85, 1.0),
+        "cell_style": "emoji",
+        "emoji_levels": ["\U0001f60a", "\U0001f604", "\U0001f970", "\U0001f496"],
+        "streak_icon": _barbie_icon,
+    },
+    "ocean_drift": {
+        "name": "Ocean Drift",
+        "bg": (0.02, 0.05, 0.15, 0.35),
+        "border": (0.20, 0.35, 0.55, 0.50),
+        "empty": (0.15, 0.25, 0.40, 0.30),
+        "levels": [
+            (0.53, 0.81, 0.92, 0.90),  # sky blue
+            (0.40, 0.70, 0.90, 0.90),  # light blue
+            (0.15, 0.45, 0.80, 0.90),  # strong blue
+            (0.05, 0.25, 0.60, 0.95),  # deep blue
+        ],
+        "text": (0.92, 0.96, 1.0, 0.95),
+        "cell_style": "water",
+        "streak_icon": _water_icon,
+    },
+    "minesweeper": {
+        "name": "Minesweeper",
+        "bg": (0.75, 0.75, 0.75, 0.95),         # classic silver #C0C0C0
+        "border": (0.50, 0.50, 0.50, 1.0),       # dark gray frame
+        "empty": (0.75, 0.75, 0.75, 1.0),        # unrevealed base gray
+        "levels": [
+            (0.0, 0.0, 1.0, 1.0),                # 1 = blue
+            (0.0, 0.5, 0.0, 1.0),                # 2 = dark green
+            (1.0, 0.0, 0.0, 1.0),                # 3 = red
+            (0.0, 0.0, 0.5, 1.0),                # 4 = dark blue
+        ],
+        "text": (0.15, 0.15, 0.15, 1.0),
+        "cell_style": "minesweeper",
+        "ms_highlight": (1.0, 1.0, 1.0, 1.0),   # white bevel top/left
+        "ms_shadow": (0.50, 0.50, 0.50, 1.0),    # dark gray bevel bottom/right
+        "ms_revealed": (0.72, 0.72, 0.72, 1.0),  # flat revealed cell
+        "ms_grid": (0.50, 0.50, 0.50, 1.0),      # thin grid line on revealed
+        "ms_led_bg": (0.05, 0.05, 0.05, 1.0),     # black LED background
+        "ms_led_fg": (0.85, 0.0, 0.0, 1.0),        # red LED digits
+        "ms_led_dim": (0.20, 0.0, 0.0, 1.0),       # dim red for "off" segments
+        "streak_icon": _minesweeper_icon,
+    },
+}
+
+_WATER_FILL = {1: 0.30, 2: 0.55, 3: 0.80, 4: 1.0}
 
 
 # ---- Config & Data ----
@@ -202,16 +323,19 @@ class GraphView(NSView):
             self.today_count = 0
             self.streak = 0
             self.longest = 0
+            self.theme_key = "github_classic"
         return self
 
     def isFlipped(self):
         return True
 
     def drawRect_(self, rect):
-        self._color(BG).setFill()
+        theme = THEMES[self.theme_key]
+
+        self._color(theme["bg"]).setFill()
         bg = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(self.bounds(), 12, 12)
         bg.fill()
-        self._color(BORDER).setStroke()
+        self._color(theme["border"]).setStroke()
         bg.setLineWidth_(1)
         bg.stroke()
 
@@ -220,19 +344,44 @@ class GraphView(NSView):
             return
 
         weeks = self.cal["weeks"]
-        self._text(f"{self.total} contributions in the last year", LPAD, 12, 13, True)
 
-        icon = "\U0001f525" if self.today_count > 0 else "\u26a0\ufe0f"
-        self._text(f"{icon} {self.streak}d streak  |  {self.today_count} today  |  best: {self.longest}d",
-                   W - 280, 14, 11)
+        if theme["cell_style"] == "minesweeper":
+            # LED counter header - labels above boxes
+            led_w = 56
+            led_h = 24
+            label_sz = 8
+            label_y = 4
+            led_y = label_y + label_sz + 2
+            # Left side: total + streak
+            self._ms_label("total", LPAD, label_y, led_w, label_sz)
+            self._draw_led_number(self.total, LPAD, led_y, led_w, led_h)
+            streak_x = LPAD + led_w + 16
+            self._ms_label("streak", streak_x, label_y, led_w, label_sz)
+            self._draw_led_number(self.streak, streak_x, led_y, led_w, led_h)
+            # Right side: today + best
+            best_x = W - RPAD - led_w
+            self._ms_label("best", best_x, label_y, led_w, label_sz)
+            self._draw_led_number(self.longest, best_x, led_y, led_w, led_h)
+            today_x = best_x - led_w - 16
+            self._ms_label("today", today_x, label_y, led_w, label_sz)
+            self._draw_led_number(self.today_count, today_x, led_y, led_w, led_h)
+        else:
+            self._text(f"{self.total} contributions in the last year", LPAD, 12, 13, True)
+            icon = theme["streak_icon"](self.streak, self.today_count)
+            self._text(f"{icon} {self.streak}d streak  |  {self.today_count} today  |  best: {self.longest}d",
+                       W - 280, 14, 11)
 
         prev = None
+        month_y = 44 if theme["cell_style"] == "minesweeper" else 36
+        last_drawn_x = -100
         for i, wk in enumerate(weeks):
             if not wk["contributionDays"]:
                 continue
             m = datetime.strptime(wk["contributionDays"][0]["date"], "%Y-%m-%d").strftime("%b")
-            if m != prev:
-                self._text(m, LPAD + i * STEP, 36, 10)
+            cur_x = LPAD + i * STEP
+            if m != prev and cur_x - last_drawn_x >= 3 * STEP:
+                self._text(m, cur_x, month_y, 10)
+                last_drawn_x = cur_x
                 prev = m
 
         for row, lbl in {1: "Mon", 3: "Wed", 5: "Fri"}.items():
@@ -243,19 +392,14 @@ class GraphView(NSView):
                 x = LPAD + ci * STEP
                 y = TPAD + day["weekday"] * STEP
                 lv = lvl(day["contributionCount"])
-                c = EMPTY if lv == 0 else LEVELS[lv - 1]
-                self._color(c).setFill()
-                NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
-                    NSRect(NSPoint(x, y), NSSize(CELL, CELL)), 2, 2).fill()
+                self._draw_cell(theme, x, y, lv)
 
         ly = H - 22
         lx = W - 175
         self._text("Less", lx, ly + 1, 9)
         lx += 30
-        for c in [EMPTY] + LEVELS:
-            self._color(c).setFill()
-            NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(
-                NSRect(NSPoint(lx, ly), NSSize(10, 10)), 2, 2).fill()
+        for i in range(5):
+            self._draw_cell(theme, lx, ly, i, size=10)
             lx += 14
         self._text("More", lx + 4, ly + 1, 9)
 
@@ -264,10 +408,141 @@ class GraphView(NSView):
         return NSColor.colorWithCalibratedRed_green_blue_alpha_(*rgba)
 
     @objc.python_method
+    def _draw_cell(self, theme, x, y, level, size=None):
+        sz = size or CELL
+        r = 2
+        cell_rect = NSRect(NSPoint(x, y), NSSize(sz, sz))
+        path = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(cell_rect, r, r)
+
+        if theme["cell_style"] == "minesweeper":
+            bv = max(1, int(sz * 0.18))
+            if level == 0:
+                # Empty raised bevel (unrevealed tile)
+                self._color(theme["empty"]).setFill()
+                NSBezierPath.fillRect_(cell_rect)
+                self._color(theme["ms_highlight"]).setFill()
+                NSBezierPath.fillRect_(NSRect(NSPoint(x, y), NSSize(sz, bv)))
+                NSBezierPath.fillRect_(NSRect(NSPoint(x, y), NSSize(bv, sz)))
+                self._color(theme["ms_shadow"]).setFill()
+                NSBezierPath.fillRect_(NSRect(NSPoint(x, y + sz - bv), NSSize(sz, bv)))
+                NSBezierPath.fillRect_(NSRect(NSPoint(x + sz - bv, y), NSSize(bv, sz)))
+            else:
+                # Revealed tile with emoji based on level
+                self._color(theme["ms_revealed"]).setFill()
+                NSBezierPath.fillRect_(cell_rect)
+                self._color(theme["ms_grid"]).setStroke()
+                bp = NSBezierPath.bezierPathWithRect_(cell_rect)
+                bp.setLineWidth_(0.5)
+                bp.stroke()
+                if level == 1:
+                    # Blue "1" digit
+                    num = "1"
+                    font_sz = sz - 3
+                    f = NSFont.boldSystemFontOfSize_(font_sz)
+                    a = NSAttributedString.alloc().initWithString_attributes_(num, {
+                        NSFontAttributeName: f,
+                        NSForegroundColorAttributeName: self._color(theme["levels"][0]),
+                    })
+                    ts = a.size()
+                    a.drawAtPoint_(NSPoint(x + (sz - ts.width) / 2, y + (sz - ts.height) / 2))
+                else:
+                    # 2=bomb, 3=flag, 4=smiley
+                    _ms_emoji = {2: "\U0001f4a3", 3: "\U0001f6a9", 4: "\U0001f60a"}
+                    emoji = _ms_emoji.get(level, "\U0001f4a3")
+                    font_sz = sz - 2
+                    f = NSFont.systemFontOfSize_(font_sz)
+                    a = NSAttributedString.alloc().initWithString_attributes_(emoji, {
+                        NSFontAttributeName: f,
+                    })
+                    es = a.size()
+                    a.drawAtPoint_(NSPoint(x + (sz - es.width) / 2, y + (sz - es.height) / 2))
+        elif theme["cell_style"] == "emoji":
+            self._color(theme["empty"]).setFill()
+            path.fill()
+            if level > 0:
+                emoji = theme["emoji_levels"][level - 1]
+                font_sz = sz - 1
+                f = NSFont.systemFontOfSize_(font_sz)
+                a = NSAttributedString.alloc().initWithString_attributes_(emoji, {
+                    NSFontAttributeName: f,
+                })
+                e_size = a.size()
+                ex = x + (sz - e_size.width) / 2
+                ey = y + (sz - e_size.height) / 2
+                a.drawAtPoint_(NSPoint(ex, ey))
+        elif theme["cell_style"] == "water":
+            self._color(theme["border"]).setStroke()
+            path.setLineWidth_(0.5)
+            path.stroke()
+            if level > 0:
+                fill_frac = _WATER_FILL[level]
+                fill_h = sz * fill_frac
+                fill_rect = NSRect(NSPoint(x, y + sz - fill_h), NSSize(sz, fill_h))
+                NSGraphicsContext.currentContext().saveGraphicsState()
+                path.addClip()
+                self._color(theme["levels"][level - 1]).setFill()
+                NSBezierPath.fillRect_(fill_rect)
+                NSGraphicsContext.currentContext().restoreGraphicsState()
+        else:
+            c = theme["empty"] if level == 0 else theme["levels"][level - 1]
+            self._color(c).setFill()
+            path.fill()
+
+    @objc.python_method
+    def _draw_led_number(self, value, x, y, width, height):
+        """Draw a number in red LED style on a black recessed panel."""
+        theme = THEMES[self.theme_key]
+        # Black recessed background
+        panel_rect = NSRect(NSPoint(x, y), NSSize(width, height))
+        self._color(theme["ms_led_bg"]).setFill()
+        NSBezierPath.fillRect_(panel_rect)
+        # Sunken border: dark outer, lighter inner
+        outer = NSBezierPath.bezierPathWithRect_(panel_rect)
+        self._color((0.15, 0.15, 0.15, 1.0)).setStroke()
+        outer.setLineWidth_(1.0)
+        outer.stroke()
+        inner_rect = NSRect(NSPoint(x + 1, y + 1), NSSize(width - 2, height - 2))
+        inner = NSBezierPath.bezierPathWithRect_(inner_rect)
+        self._color((0.25, 0.25, 0.25, 1.0)).setStroke()
+        inner.setLineWidth_(0.5)
+        inner.stroke()
+        # Dim "888" behind for off-segment look
+        dim_text = "888"
+        font_sz = height - 6
+        f = NSFont.monospacedDigitSystemFontOfSize_weight_(font_sz, 0.7)  # bold weight
+        dim_a = NSAttributedString.alloc().initWithString_attributes_(dim_text, {
+            NSFontAttributeName: f,
+            NSForegroundColorAttributeName: self._color(theme["ms_led_dim"]),
+        })
+        ds = dim_a.size()
+        dx = x + (width - ds.width) / 2
+        dy = y + (height - ds.height) / 2
+        dim_a.drawAtPoint_(NSPoint(dx, dy))
+        # Actual number in bright red
+        num_text = f"{int(value):03d}"
+        num_a = NSAttributedString.alloc().initWithString_attributes_(num_text, {
+            NSFontAttributeName: f,
+            NSForegroundColorAttributeName: self._color(theme["ms_led_fg"]),
+        })
+        num_a.drawAtPoint_(NSPoint(dx, dy))
+
+    @objc.python_method
+    def _ms_label(self, text, x, y, width, size):
+        """Draw a small centered gray label below an LED panel."""
+        f = NSFont.systemFontOfSize_(size)
+        a = NSAttributedString.alloc().initWithString_attributes_(text, {
+            NSFontAttributeName: f,
+            NSForegroundColorAttributeName: self._color((0.35, 0.35, 0.35, 1.0)),
+        })
+        ts = a.size()
+        a.drawAtPoint_(NSPoint(x + (width - ts.width) / 2, y))
+
+    @objc.python_method
     def _text(self, s, x, y, size, bold=False):
+        theme = THEMES[self.theme_key]
         f = NSFont.boldSystemFontOfSize_(size) if bold else NSFont.systemFontOfSize_(size)
         a = NSAttributedString.alloc().initWithString_attributes_(s, {
-            NSForegroundColorAttributeName: self._color(TXT),
+            NSForegroundColorAttributeName: self._color(theme["text"]),
             NSFontAttributeName: f,
         })
         a.drawAtPoint_(NSPoint(x, y))
@@ -282,7 +557,6 @@ class GraphView(NSView):
             ("Send to Back" if ctrl.is_floating else "Bring to Front", "toggleFloat:"),
             ("Hide Widget", "toggleWidget:"),
             None,
-            ("Quit Ship Streak", "quit:"),
         ]
         for entry in items:
             if entry is None:
@@ -292,6 +566,24 @@ class GraphView(NSView):
                 item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(title, sel, "")
                 item.setTarget_(ctrl)
                 menu.addItem_(item)
+
+        theme_sub = NSMenu.alloc().initWithTitle_("Theme")
+        for idx, key in enumerate(THEME_ORDER):
+            t_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                THEMES[key]["name"], "switchTheme:", "")
+            t_item.setTag_(idx)
+            t_item.setTarget_(ctrl)
+            if key == self.theme_key:
+                t_item.setState_(1)
+            theme_sub.addItem_(t_item)
+        theme_holder = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Theme", None, "")
+        theme_holder.setSubmenu_(theme_sub)
+        menu.addItem_(theme_holder)
+
+        menu.addItem_(NSMenuItem.separatorItem())
+        quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Quit Ship Streak", "quit:", "")
+        quit_item.setTarget_(ctrl)
+        menu.addItem_(quit_item)
         return menu
 
     def triggerRedraw_(self, _):
@@ -312,6 +604,7 @@ class AppController(NSObject):
             self.widget_visible = True
             self._toggle_widget_item = None
             self._toggle_float_item = None
+            self._theme_items = []
         return self
 
     @objc.python_method
@@ -320,6 +613,7 @@ class AppController(NSObject):
         self.graph_view = view
         self.username = username
         self._setup_status_bar()
+        self._sync_theme_checks()
 
     @objc.python_method
     def _setup_status_bar(self):
@@ -333,6 +627,21 @@ class AppController(NSObject):
         menu.addItem_(NSMenuItem.separatorItem())
         self._menu_item(menu, "Refresh", "refresh:")
         self._menu_item(menu, "Open GitHub Profile", "openProfile:")
+        menu.addItem_(NSMenuItem.separatorItem())
+
+        self._theme_items = []
+        theme_sub = NSMenu.alloc().initWithTitle_("Theme")
+        for idx, key in enumerate(THEME_ORDER):
+            t_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+                THEMES[key]["name"], "switchTheme:", "")
+            t_item.setTag_(idx)
+            t_item.setTarget_(self)
+            theme_sub.addItem_(t_item)
+            self._theme_items.append(t_item)
+        theme_holder = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("Theme", None, "")
+        theme_holder.setSubmenu_(theme_sub)
+        menu.addItem_(theme_holder)
+
         menu.addItem_(NSMenuItem.separatorItem())
         self._menu_item(menu, "Quit Ship Streak", "quit:")
         self.status_item.setMenu_(menu)
@@ -376,10 +685,10 @@ class AppController(NSObject):
         if not self.status_item:
             return
         v = self.graph_view
-        if v and v.today_count > 0:
-            self.status_item.button().setTitle_(f"\U0001f525 {v.streak}")
-        elif v:
-            self.status_item.button().setTitle_(f"\u26a0\ufe0f {v.streak}")
+        if v:
+            theme = THEMES[v.theme_key]
+            icon = theme["streak_icon"](v.streak, v.today_count)
+            self.status_item.button().setTitle_(f"{icon} {v.streak}")
 
     @objc.python_method
     def _sync_menu_titles(self):
@@ -389,6 +698,24 @@ class AppController(NSObject):
         if self._toggle_float_item:
             self._toggle_float_item.setTitle_(
                 "Send to Back" if self.is_floating else "Bring to Front")
+
+    def switchTheme_(self, sender):
+        idx = sender.tag()
+        key = THEME_ORDER[idx]
+        self.graph_view.theme_key = key
+        cfg = load_config()
+        cfg["theme"] = key
+        save_config(cfg)
+        self.graph_view.setNeedsDisplay_(True)
+        self.updateMenuBar_(None)
+        self._sync_theme_checks()
+
+    @objc.python_method
+    def _sync_theme_checks(self):
+        current = self.graph_view.theme_key if self.graph_view else "github_classic"
+        for item in self._theme_items:
+            idx = item.tag()
+            item.setState_(1 if THEME_ORDER[idx] == current else 0)
 
     @objc.python_method
     def _do_refresh(self):
@@ -598,6 +925,7 @@ def create_widget(app, username):
 
     view = GraphView.alloc().initWithFrame_(
         NSRect(NSPoint(0, 0), NSSize(W, H)))
+    view.theme_key = load_config().get("theme", "github_classic")
     win.setContentView_(view)
 
     ctrl = AppController.alloc().init()
