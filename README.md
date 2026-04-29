@@ -2,7 +2,7 @@
 
 A macOS desktop widget that displays your GitHub contribution graph, always visible on your screen. Stay accountable for shipping every day.
 
-![macOS](https://img.shields.io/badge/macOS-10.15+-black)
+![macOS](https://img.shields.io/badge/macOS-12+-black)
 ![Python](https://img.shields.io/badge/Python-3.8+-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -12,43 +12,35 @@ A macOS desktop widget that displays your GitHub contribution graph, always visi
 - Shows current streak, today's contributions, and longest streak
 - Menu bar icon with streak count for quick glance
 - Auto-refreshes every 3 minutes and on wake from sleep
-- Dark theme matching GitHub's contribution graph
+- 5 themes: GitHub Classic, Midnight Inferno, Malibu Dream, Ocean Drift, Minesweeper
 - Draggable, works on all Spaces
 
 ## Requirements
 
-- **macOS 10.15+** (Catalina or later)
+- **macOS 12+** (Monterey or later)
 - **Python 3.8+**
 - **GitHub CLI (`gh`)** - optional, for auto-detection of credentials ([install](https://cli.github.com))
 
-## Quick Install
+## Install
 
 ```bash
 git clone https://github.com/ekatasingh1107/ship-streak.git
 cd ship-streak
-chmod +x setup.sh
 ./setup.sh
 ```
 
-The setup script will:
-1. Verify Python 3 is available
-2. Install Python dependencies (`requests`, `pyobjc-framework-Cocoa`)
-3. If `gh` CLI is available, auto-detect your GitHub username
-4. Install a LaunchAgent for auto-start on login
+This installs **Ship Streak.app** in `/Applications` and launches it. The app:
 
-Then start it:
-
-```bash
-python3 ship_streak.py
-```
+- Shows up in **Spotlight** (Cmd+Space, type "Ship Streak")
+- Shows up in **Launchpad** and **Finder**
+- **Auto-starts on login** via LaunchAgent
+- Has **no Dock icon** (menu bar only)
 
 On first launch, if no credentials are found, a setup window will appear where you can enter your GitHub username and a personal access token (no special scopes needed).
 
-Or enable auto-start:
+## Relaunch after Quit
 
-```bash
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ship-streak.plist
-```
+Cmd+Space, type "Ship Streak", hit Enter. Like any other app.
 
 ## Authentication
 
@@ -77,12 +69,14 @@ Tokens are stored in macOS Keychain (service: `ship-streak-github`), never in co
 - **Open GitHub Profile** - opens in browser
 - **Send to Back / Bring to Front** - toggle floating behavior
 - **Hide Widget** - hides the widget (reopen from menu bar)
+- **Theme** - switch between 5 themes
 - **Quit Ship Streak** - fully exit
 
 ### Menu Bar
 - **Show/Hide Widget** - toggle widget visibility
 - **Send to Back / Bring to Front** - toggle floating
 - **Refresh** - fetch latest data
+- **Theme** - switch themes
 - **Quit Ship Streak** - fully exit
 
 ### Drag
@@ -92,14 +86,12 @@ Click and drag anywhere on the widget to reposition it.
 
 ```bash
 # Stop and remove auto-start
-launchctl bootout gui/$(id -u)/com.ship-streak.plist
-rm ~/Library/LaunchAgents/com.ship-streak.plist
+launchctl bootout gui/$(id -u)/com.shipstreak.app
 
-# Remove config and logs
+# Remove app, LaunchAgent, config
+rm -rf "/Applications/Ship Streak.app"
+rm ~/Library/LaunchAgents/com.shipstreak.app.plist
 rm -rf ~/.config/ship-streak
-
-# Remove the repo
-rm -rf /path/to/ship-streak
 ```
 
 ## How it works
