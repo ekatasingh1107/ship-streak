@@ -10,8 +10,51 @@ PLIST_PATH="$HOME/Library/LaunchAgents/$PLIST_LABEL.plist"
 CONFIG_DIR="$HOME/.config/ship-streak"
 LOG_DIR="$CONFIG_DIR/logs"
 
+# Legacy agent from the project's previous name (github-streak-tracker).
+# It shipped with KeepAlive=true, so killing the process makes launchd respawn
+# it forever ("can't quit it"). Always tear it down on install and uninstall.
+LEGACY_LABELS="com.github-streak-tracker.plist com.github-streak-tracker"
+LEGACY_DIR="$HOME/github-streak-tracker"
+
+remove_legacy_agent() {
+    local uid
+    uid="$(id -u)"
+    for label in $LEGACY_LABELS; do
+        launchctl bootout "gui/$uid/$label" 2>/dev/null || true
+    done
+    rm -f "$HOME/Library/LaunchAgents/com.github-streak-tracker.plist"
+    pkill -f "streak_tracker.py" 2>/dev/null || true
+}
+
+uninstall() {
+    echo "=== Ship Streak Uninstall ==="
+    echo ""
+    echo "[1/3] Stopping app and LaunchAgent..."
+    launchctl bootout "gui/$(id -u)/$PLIST_LABEL" 2>/dev/null || true
+    rm -f "$PLIST_PATH"
+    pkill -f "ship_streak.py" 2>/dev/null || true
+
+    echo "[2/3] Removing legacy github-streak-tracker agent (if present)..."
+    remove_legacy_agent
+
+    echo "[3/3] Removing app bundle..."
+    rm -rf "$APP_PATH"
+
+    echo ""
+    echo "=== Uninstall Complete ==="
+    echo "  Config kept at: $CONFIG_DIR (delete manually to remove credentials)"
+    exit 0
+}
+
+if [ "$1" = "--uninstall" ] || [ "$1" = "-u" ]; then
+    uninstall
+fi
+
 echo "=== Ship Streak Setup ==="
 echo ""
+
+# Clean up the legacy KeepAlive agent before installing the current app.
+remove_legacy_agent
 
 # 1. Check Python 3
 if [ -z "$PYTHON3" ]; then
